@@ -112,3 +112,42 @@ Value is a sequence of tags specified below:
 
 > [!IMPORTANT]
 > If the final size of any packet exceeds system MTU, it would be fractured into fragments, which looks suspicious
+
+## Changes in this fork
+
+This fork improves traffic obfuscation without affecting throughput performance. All changes are in `device/send.go`, `device/receive.go`, and `device/timers.go`.
+
+### 1. Per-packet variable padding (S1–S4)
+
+**Before:** S1–S4 were fixed sizes applied identically to every packet of that type. After observing two packets of the same type, an observer knew the exact padding size for the entire session.
+
+**After:** Each packet gets a random padding size in the range `[1, Sx]`. For example, with `S1=50`, each handshake initiation packet will have between 1 and 50 bytes of random padding — a different amount every time.
+
+The receiver handles this transparently:
+- For fixed-size handshake packets (S1/S2/S3): `padding = packet_size - expected_size` — O(1), no performance cost.
+- For variable-size transport packets (S4): scans positions 0..max and validates the magic header — O(max_padding), negligible cost.
+
+> [!IMPORTANT]
+> S1–S4 values now act as **maximums**, not fixed sizes. Both peers must have the same maximum configured (as before), but actual padding per packet will vary.
+
+### 2. Junk packet count jitter (Jc)
+
+**Before:** `Jc` junk packets were sent before every handshake. After the first handshake, an observer knew the fixed count for the entire session.
+
+**After:** The actual count per handshake is `Jc + random(-1, 0, +1)`, varying by ±1 each time. The configured `Jc` remains the average.
+
+### 3. Keepalive padding (S4)
+
+**Before:** S4 padding was skipped for keepalive packets (zero-length payload). Keepalives were trivially identifiable: 32-byte packets sent at a fixed 10-second interval.
+
+**After:** S4 padding is applied to keepalive packets as well, making them indistinguishable from regular transport packets by size.
+
+### 4. Keepalive timer jitter
+
+**Before:** Keepalives were sent at exactly 10-second intervals — a strong protocol fingerprint.
+
+**After:** Each keepalive interval is `10s ± 1s` (uniformly random). The 10-second average is preserved, but the exact timing varies per interval.
+
+---
+
+All four changes have negligible performance impact. No new configuration parameters are introduced — existing S1–S4, Jc, and H1–H4 values continue to work as before.
