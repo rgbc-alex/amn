@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"handshake\\\\|obfuscation\\\\|protocol.*layer\" /home/alex/Загрузки/amnezia-client-dev/client/protocols/*.h /home/alex/Загрузки/amnezia-client-dev/client/protocols/*.cpp)",
+      "Bash(grep -r \"v2\\\\|version 2\\\\|AWGv2\\\\|protocol.*2\" /home/alex/Загрузки/amnezia-client-dev/README*.md)",
+      "Bash(xargs ls:*)",
+      "Bash(grep:*)",
+      "Bash(go build:*)"
+    ]
+  }
+}
